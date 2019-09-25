@@ -1,0 +1,72 @@
+---
+title: "Crop Data"
+author: "Tim Hogan"
+date: "9/25/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(magrittr)
+library(stringr)
+library(kableExtra)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r, echo=FALSE}
+
+field_crop_base <- read.csv("https://raw.githubusercontent.com/tmh741/FieldCropTests/master/field_crop_one.csv")
+
+#Check for unique columns and pick out the ones that have more than 1 value.
+field_unique = rapply(field_crop_base,function(x)length(unique(x)))
+field_names <- field_unique[field_unique!=1]
+field_1 <- field_crop_base[,names(field_names)]
+
+#Remove State.ANSI
+field_1 %<>% select(-`State.ANSI`) 
+
+#The (D) and (S) values represent undisclosed data points.
+#As such, I will make them NA and then omit all NA's.
+field_1 %<>% mutate(Value = na_if(Value," (D)"))
+field_1 %<>% mutate(Value = na_if(Value," (S)"))
+field_1 %<>% mutate(Value = na_if(Value," (NA)"))
+
+field_1_clean <- na.omit(field_1)
+
+d<- unique(field_1_clean$Data.Item)
+
+## The next is looking at the data. I'm filtering out each data item at a time
+## into a new table. Then, I'm using unique to see if "Data Item" differs.
+
+field_oats <- filter(field_1_clean, str_detect(Commodity, "OATS"))
+a<-length(unique(field_oats$Data.Item))
+field_corn <- filter(field_1_clean, str_detect(Commodity, "CORN"))
+b<-length(unique(field_corn$Data.Item))
+field_soy <- filter(field_1_clean, str_detect(Commodity, "SOYBEANS"))
+c<-length(unique(field_soy$Data.Item))
+## Since the only Data.Item corresponds to commodity, they are redundant.
+## As such, I will remove them.
+
+# First, separate Data.Item. I'm renaming it "Commodities".
+# You can choose to just remove it, but I want to keep it.
+# Data.Items contains more information on crops.
+field_1_clean <- separate(field_1_clean, col=Data.Item, into = c("Commodities", "Units"), sep = " - ")
+
+#Using "Select" to remove undesired columns.
+field_1_clean %<>% select(-`Commodity`,-`Units`)
+
+#Next, unite the date into a single term.
+field_1_clean %<>% unite(col="Date", Period, Year,sep=" ")
+```
+
+
+```{r,echo=FALSE}
+kable(field_1_clean[1:20,],col.names = c("Date", "State", "Commodities", "Value"), booktabs=T)
+```

@@ -1,0 +1,89 @@
+---
+title: "Class Assignment: MPG tables and charts"
+author: "Tim Hogan"
+date: "September 16, 2019"
+output: pdf_document
+---
+  
+```{r setup, include=FALSE}
+library(knitr)                ## loading the entire knitr package
+library(tidyverse)              ####### change# load tidyverse
+library(esquisse)             ## use esquisse to setup the basic plots
+
+library(kableExtra)
+library(magrittr)
+opts_chunk$set(echo = TRUE)
+```
+
+# Using the tidyverse (especially dplyr) for MPG
+
+Recall assignment:
+  
+  Tables should include a comparison of city and highway mileage by the class of car and the best three car models for city and highway mileage for all the years in which data is available.  
+
+Plot the data displaying as much of the data as you can. Put continuous variables on the axes and include a locally smoothed regression line to show the relationship with mileage.  Also make a box plot comparing city and highway MPG by class of car.  
+
+
+## Table 1: Average City and Highway Milage per Car Class
+
+```{r,echo=FALSE}
+
+data(mpg)     ## load the data
+
+mpg$cyl <- as.factor(mpg$cyl)
+mpg$drv <- as.factor(mpg$drv)
+mpg$cty <- as.double(mpg$cty)
+```
+
+```{r,echo=FALSE}
+mpg_1 <- select(mpg, cty, hwy, class )
+
+mpg_1 %<>% group_by(class) %>% 
+  summarise(City=mean(cty),
+            Highway=mean(hwy)) %>% 
+  arrange(class, City, Highway) 
+
+kable(mpg_1, booktabs=TRUE,digits=2, col.names = c("Class", "City Mileage", "Highway Mileage"), align="c")
+```
+
+
+## Table 2: Best models for city and highway milage in 1999 and 2008
+
+```{r,echo=FALSE}
+
+#Filter out data for the desired year.
+mpg_99 <- filter(mpg, year == "1999") 
+
+#Use the same pipe sequence as before to find average per model.
+mpg_99 %<>% group_by(model) %>% 
+  summarise(City=mean(cty),
+            Highway=mean(hwy)) %>% 
+  arrange(-City, model, Highway)
+# Pick out the top 3 for City
+mpg_99.city <- mpg_99[c(1:3),c("model","City")]
+
+#Do the same as above but rearrange it for highway.
+mpg_99 %<>% arrange(-Highway, model, City)
+mpg_99.highway <- mpg_99[c(1:3),c("model","Highway")]
+
+#Repeat all of the above for 2008!
+mpg_08 <- filter(mpg, year == "2008") 
+
+mpg_08 %<>% group_by(model) %>% 
+  summarise(City=mean(cty),
+            Highway=mean(hwy)) %>% 
+  arrange(-City, model, Highway) 
+
+mpg_08.city <- mpg_08[c(1:3),c("model","City")]
+
+mpg_08 %<>% arrange(-Highway, model, City)
+mpg_08.highway <- mpg_08[c(1:3),c("model","Highway")]
+
+#Bind all four together.
+mpg.av <- bind_cols(mpg_99.city,mpg_99.highway,mpg_08.city, mpg_08.highway)
+
+kable(mpg.av,digits=2,booktabs=TRUE,col.names = c("Model","Milage","Model","Mileage","Model","Mileage","Model","Mileage")) %>%
+  add_header_above(c("City 1999"=2, "Highway 1999" = 2, "City 2008" =2, "Highway 2008" =2 ))
+```
+
+
